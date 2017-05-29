@@ -14,40 +14,33 @@ import seaborn as sns
 import math
 import time
 
-cust = pd.read_csv('/Users/matthewyeozhiwei/Downloads/AWCustomers/AWCustomers.csv')
-sales = pd.read_csv('/Users/matthewyeozhiwei/Downloads/AWCustomers/AWSales.csv')
+cust = pd.read_csv('/Users/matthewyeozhiwei/repos/MicrosoftFinal/AWCustomers.csv')
+sales = pd.read_csv('/Users/matthewyeozhiwei/repos/MicrosoftFinal/AWSales.csv')
 
 ## Join the Customer Sales Data and the CustomerID Data
 X = pd.merge(cust, sales, how = 'inner', on = 'CustomerID')
 
-## Drop any duplicate entries
-X = X.drop_duplicates(subset=['AvgMonthSpend', 'CustomerID'])
 
-## Drop useless columns in the dataset
 str_cols = ['CustomerID', 'Title', 'FirstName', 'MiddleName', 'LastName', 'Suffix', 
             'AddressLine1', 'AddressLine2', 'City', 'StateProvinceName', 
             'CountryRegionName', 'PostalCode', 'PhoneNumber',
             'LastUpdated']
-X1 = X.drop(labels = str_cols, axis = 1)
-
-
-
-## Change birthdate to age
-X1['BirthDate'] = pd.to_datetime(X1['BirthDate'])
-X1['Year'] = X1['BirthDate'].dt.year
-X1['Age'] = X1['Year'].apply(lambda x: 2017 - x)
-X1 = X1.drop(labels = ['BirthDate', 'Year'], axis = 1)
-
-
-## Special categories for summary and descriptive statistics
 gender = ['M', 'F']
 order_categories = ['Clerical', 'Skilled Manual','Manual','Management','Professional']
 marital = ['M', 'S']
 years = ['1998-01-01', '1992-01-01' ,'1987-01-01', '1967-01-01']
-'''
-## Apply logarithm to AvgMonthSpend
-X1['AvgMonthSpend'] = X1['AvgMonthSpend'].apply(lambda x: math.log(x))
-'''
+
+
+def clean(data):
+    data = data.drop_duplicates(subset=['AvgMonthSpend', 'CustomerID'])
+    X1 = data.drop(labels = str_cols, axis = 1)
+    X1['BirthDate'] = pd.to_datetime(X1['BirthDate'])
+    X1['Year'] = X1['BirthDate'].dt.year
+    X1['Age'] = X1['Year'].apply(lambda x: 2017 - x)
+    X1 = X1.drop(labels = ['BirthDate', 'Year'], axis = 1)
+    return X1
+
+X1 = clean(X)
 
 ## Function to plot histograms
 def plot_hist(col):
@@ -75,18 +68,6 @@ def plot_condscatter3d(col, x, y):
                       palette="Set2", margin_titles=True)
     g.map(sns.regplot, x, y, fit_reg = False)    
 
-'''def plot_condbar_bike(plot_cols):
-    for col in plot_cols:
-        temp = []
-        temp2 = []
-        listnames = X1[col].unique()
-        temp.append(X1[col].unique())
-        print(temp)
-        for name in listnames:
-            temp2.append(X1[(X1[col] == name) & (X1['BikeBuyer'] == 0)).value_counts()
-            print(X1[X1[col] == name].BikeBuyer.value_counts())
-            temp.append(temp2)
-m        temp = pd.DataFrame(temp)'''
 
         
     
@@ -108,8 +89,9 @@ def auto_boxplot(df, plot_cols, column):
     return column 
 
 plot_cols = ['Occupation', 'Education', 'NumberChildrenAtHome', 'TotalChildren', 'NumberCarsOwned']
-'''auto_boxplot(X1, plot_cols, 'AvgMonthSpend')'''
-'''
+
+
+
 fig = plt.figure()
 ax = plt.subplot(1,2,1)
 ax.set_title('Bike Buyer = 0')
@@ -117,24 +99,26 @@ X1[X1['BikeBuyer'] == 0]['Occupation'].value_counts().plot(kind = 'bar')
 ax = plt.subplot(1,2,2)
 ax.set_title('Bike Buyer = 1')
 X1[X1['BikeBuyer'] == 1]['Occupation'].value_counts().plot(kind = 'bar')
-'''
-'''plot_condscatter5d(col = 'NumberChildrenAtHome', row = 'NumberCarsOwned',
-                 hue = 'BikeBuyer', x = 'YearlyIncome', y = 'AvgMonthSpend')'''
-'''fig = plt.figure()
+
+fig = plt.figure()
 ax = fig.gca()
-X1.MaritalStatus.value_counts().plot(kind = 'bar')'''
+X1.MaritalStatus.value_counts().plot(kind = 'bar')
+
                       
 ## Edit MetaData: Map Categorical Features to Numerals
-X1.Gender = X1.Gender.map({'M':0, 'F':1})
-X1.MaritalStatus = X1.MaritalStatus.map({'M' : 0, 'S' : 1})
-X1 = pd.get_dummies(X1, columns = ['Education', 'Occupation'])
+def metadataedit(X1):
+    X1.Gender = X1.Gender.map({'M':0, 'F':1})
+    X1.MaritalStatus = X1.MaritalStatus.map({'M' : 0, 'S' : 1})
+    X1 = pd.get_dummies(X1, columns = ['Education', 'Occupation'])
+    return X1
+
+X1 = metadataedit(X1)
 
 ## Final check for any null values/ Ensure that all features are numerical
-'''
+
 print(X1[pd.isnull(X1).any(axis=1)])
 print(X1.dtypes)
 print(X1.head())
-'''
 
 ## Get ready data for model fitting (Xr is for regression, Xc is for classification)
 yc = X1['BikeBuyer']
@@ -172,7 +156,7 @@ fcmodel = RandomForestClassifier(n_estimators = 30, max_depth = 10, oob_score = 
 fcmodel.fit(Xc_train, yc_train)
 score = fcmodel.score(Xc_test, yc_test)
 print("Classification Score: ", round(score*100, 3))
-'''
+
 from sklearn.model_selection import GridSearchCV
 parameters = {'n_estimators' : [30,35,40],
                  'max_depth' : [10,15,20]}
@@ -180,7 +164,7 @@ optfcmodel = GridSearchCV(fcmodel, parameters)
 optfcmodel.fit(Xc_train, yc_train)
 score = optfcmodel.score(Xc_test, yc_test)
 print("Optimized Classification Score: ", round(score*100, 3))
-'''
+
 imptlist = fcmodel.feature_importances_.tolist()
 import heapq
 print(imptlist[8] + imptlist[9] + imptlist[10] + imptlist[11] + imptlist[12])
@@ -199,7 +183,7 @@ temp.columns = ['Feature Importance']
 print(temp)
 
 import sklearn.metrics as metrics
-'''
+
 yc_predict = fcmodel.predict(Xc_test)
 print(metrics.confusion_matrix(yc_test, yc_predict))
 print('Recall Score:', round(metrics.recall_score(yc_test, yc_predict) * 100,3))
@@ -217,9 +201,8 @@ plt.ylim([0, 1])
 plt.ylabel('True Positive Rate')
 plt.xlabel('False Positive Rate')
 plt.show()
-'''
 
-'''
+
 ## Regression Model - GradientBoostingRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 gbr = GradientBoostingRegressor()
@@ -244,6 +227,5 @@ plt.scatter(yr_predict, yr_test)
 plt.ylabel('Log of AvgMonthSpend')
 plt.xlabel('Scored Labels')
 
-'''
 
 
